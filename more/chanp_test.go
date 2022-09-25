@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JackKCWong/chansport/sync"
+	"github.com/JackKCWong/chansport/more"
 	. "github.com/onsi/gomega"
 )
 
@@ -34,4 +34,31 @@ func TestBatching(t *testing.T) {
 
 	b = <-batched
 	g.Expect(b).Should(Equal([]int{6, 7, 8, 9, 10}))
+}
+
+func TestFanOut(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	input := []int{1, 2, 3, 4, 5}
+	in := make(chan int)
+	out := make(chan int)
+
+	go func() {
+		for i := range input {
+			in <- input[i]
+		}
+
+		close(in)
+	}()
+
+	chansport.FanOut(in, out, 3, func(v int) int {
+		return v * 2
+	})
+
+	var res int
+	for r := range out {
+		res += r
+	}
+
+	g.Expect(res).Should(Equal(30))
 }
