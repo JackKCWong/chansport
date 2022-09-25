@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Batching batches inputs by the specified time window.
 func Batching[T any](in <-chan T, window time.Duration) <-chan []T {
 	var out = make(chan []T)
 	go sp.Batching(in, window, out)
@@ -12,6 +13,8 @@ func Batching[T any](in <-chan T, window time.Duration) <-chan []T {
 	return out
 }
 
+
+// Map transforms T to R by fn.
 func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	var out = make(chan R)
 	go sp.Map(in, out, fn)
@@ -19,6 +22,9 @@ func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	return out
 }
 
+
+// FanOut starts n consuming goroutines that involves fn, and put the results back
+// to out. out will be closed if in is closed.
 func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
 	var out = make(chan R)
 	sp.FanOut(in, out, n, fn)
