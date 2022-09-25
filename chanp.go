@@ -38,3 +38,10 @@ func Reduce[T any, R any](in <-chan T, fn func(agg R, v T) R) R {
 
 	return agg
 }
+
+func Debounce[T any](in <-chan T, window time.Duration) <-chan T {
+	var out = make(chan T)
+	go sp.Debounce(in, window, out)
+
+	return out
+}

@@ -1,6 +1,7 @@
 package chansport_test
 
 import (
+	"log"
 	"testing"
 	"time"
 
@@ -61,4 +62,40 @@ func TestFanOut(t *testing.T) {
 	})
 
 	g.Expect(res).Should(Equal(30))
+}
+
+func TestDebounce(t *testing.T) {
+	// g := NewGomegaWithT(t)
+
+	in := make(chan int)
+	out := make(chan int)
+
+	go func() {
+		data := []int{
+			// 0, 21, 42, 63, 84, 105, 126, 147, 168
+			1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+		for i := range data {
+			in <- data[i]
+			time.Sleep(21 * time.Millisecond)
+		}
+		close(in)
+	}()
+
+	go sp.Debounce(in, 50*time.Millisecond, out)
+
+	// first, ok := <-out
+	// g.Expect(ok).Should(BeTrue())
+	// g.Expect(first).Should(Equal(3))
+
+	// second, ok := <-out
+	// g.Expect(ok).Should(BeTrue())
+	// g.Expect(second).Should(Equal(5))
+
+	// third, ok := <-out
+	// g.Expect(ok).Should(BeTrue())
+	// g.Expect(third).Should(Equal(8))
+
+	for i := range out {
+		log.Println(i)
+	}
 }

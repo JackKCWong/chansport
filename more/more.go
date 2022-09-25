@@ -53,3 +53,30 @@ func FanOut[T any, R any](in <-chan T, out chan<- R, n int, fn func(v T) R) {
 	}()
 }
 
+func Debounce[T any](in <-chan T, window time.Duration, out chan<- T) {
+	t := time.NewTicker(window)
+	hasRead := false
+	var last T
+debounce:
+	for {
+		select {
+		case <-t.C:
+			if hasRead {
+				out <- last
+			}
+		default:
+			select {
+			case v, ok := <-in:
+				if !ok {
+					close(out)
+					break debounce
+				}
+				hasRead = true
+				last = v
+			default:
+				// time.Sleep(window / 10)
+				break
+			}
+		}
+	}
+}
