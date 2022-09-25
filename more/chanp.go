@@ -52,3 +52,4 @@ func FanOut[T any, R any](in <-chan T, out chan<- R, n int, fn func(v T) R) {
 		close(out)
 	}()
 }
+

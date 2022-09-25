@@ -4,7 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/JackKCWong/chansport/more"
+	. "github.com/JackKCWong/chansport"
+	sp "github.com/JackKCWong/chansport/more"
 	. "github.com/onsi/gomega"
 )
 
@@ -27,7 +28,7 @@ func TestBatching(t *testing.T) {
 	}()
 
 	batched := make(chan []int)
-	go chansport.Batching(in, 100*time.Millisecond, batched)
+	go sp.Batching(in, 100*time.Millisecond, batched)
 
 	b := <-batched
 	g.Expect(b).Should(Equal([]int{1, 2, 3, 4, 5}))
@@ -51,14 +52,13 @@ func TestFanOut(t *testing.T) {
 		close(in)
 	}()
 
-	chansport.FanOut(in, out, 3, func(v int) int {
+	sp.FanOut(in, out, 3, func(v int) int {
 		return v * 2
 	})
 
-	var res int
-	for r := range out {
-		res += r
-	}
+	res := Reduce(out, func(a, v int) int {
+		return a + v
+	})
 
 	g.Expect(res).Should(Equal(30))
 }

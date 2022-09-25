@@ -13,7 +13,6 @@ func Batching[T any](in <-chan T, window time.Duration) <-chan []T {
 	return out
 }
 
-
 // Map transforms T to R by fn.
 func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	var out = make(chan R)
@@ -22,7 +21,6 @@ func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	return out
 }
 
-
 // FanOut starts n consuming goroutines that involves fn, and put the results back
 // to out. out will be closed if in is closed.
 func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
@@ -30,4 +28,13 @@ func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
 	sp.FanOut(in, out, n, fn)
 
 	return out
+}
+
+func Reduce[T any, R any](in <-chan T, fn func(agg R, v T) R) R {
+	var agg R
+	for v := range in {
+		agg = fn(agg, v)
+	}
+
+	return agg
 }
