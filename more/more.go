@@ -17,15 +17,12 @@ drain:
 				out <- batch
 				batch = make([]T, 0)
 			}
-		default:
-			select {
-			case v, ok := <-in:
-				if ok {
-					batch = append(batch, v)
-				} else {
-					break drain
-				}
-			default:
+		case v, ok := <-in:
+			if ok {
+				batch = append(batch, v)
+			} else {
+				close(out)
+				break drain
 			}
 		}
 	}
@@ -55,27 +52,23 @@ func FanOut[T any, R any](in <-chan T, out chan<- R, n int, fn func(v T) R) {
 
 func Debounce[T any](in <-chan T, window time.Duration, out chan<- T) {
 	t := time.NewTicker(window)
-	hasRead := false
+	hasUpdate := false
 	var last T
 debounce:
 	for {
 		select {
 		case <-t.C:
-			if hasRead {
+			if hasUpdate {
 				out <- last
+				hasUpdate = false
 			}
-		default:
-			select {
-			case v, ok := <-in:
-				if !ok {
-					close(out)
-					break debounce
-				}
-				hasRead = true
+		case v, ok := <-in:
+			if ok {
+				hasUpdate = true
 				last = v
-			default:
-				// time.Sleep(window / 10)
-				break
+			} else {
+				close(out)
+				break debounce
 			}
 		}
 	}
