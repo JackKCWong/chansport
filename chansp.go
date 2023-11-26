@@ -1,14 +1,14 @@
 package chansport
 
 import (
-	sp "github.com/JackKCWong/chansport/more"
+	csp "github.com/JackKCWong/chansport/more"
 	"time"
 )
 
 // Batching batches inputs by the specified time window.
 func Batching[T any](in <-chan T, window time.Duration) <-chan []T {
 	var out = make(chan []T)
-	go sp.Batching(in, window, out)
+	go csp.Batching(in, window, out)
 
 	return out
 }
@@ -16,7 +16,7 @@ func Batching[T any](in <-chan T, window time.Duration) <-chan []T {
 // Map transforms T to R by fn.
 func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	var out = make(chan R)
-	go sp.Map(in, out, fn)
+	go csp.Map(in, out, fn)
 
 	return out
 }
@@ -25,7 +25,7 @@ func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 // to out. out will be closed if in is closed.
 func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
 	var out = make(chan R)
-	sp.FanOut(in, out, n, fn)
+	csp.FanOut(in, out, n, fn)
 
 	return out
 }
@@ -41,7 +41,7 @@ func Reduce[T any, R any](in <-chan T, fn func(agg R, v T) R) R {
 
 func Debounce[T any](in <-chan T, window time.Duration) <-chan T {
 	var out = make(chan T)
-	go sp.Debounce(in, window, out)
+	go csp.Debounce(in, window, out)
 
 	return out
 }
