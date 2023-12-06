@@ -6,7 +6,7 @@ import (
 	"time"
 
 	. "github.com/JackKCWong/chansport"
-	sp "github.com/JackKCWong/chansport/more"
+	sp "github.com/JackKCWong/chansport/internal"
 	. "github.com/onsi/gomega"
 )
 

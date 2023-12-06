@@ -1,8 +1,10 @@
 package chansport
 
 import (
-	csp "github.com/JackKCWong/chansport/more"
+	"context"
 	"time"
+
+	csp "github.com/JackKCWong/chansport/internal"
 )
 
 // Batching batches inputs by the specified time window.
@@ -42,6 +44,74 @@ func Reduce[T any, R any](in <-chan T, fn func(agg R, v T) R) R {
 func Debounce[T any](in <-chan T, window time.Duration) <-chan T {
 	var out = make(chan T)
 	go csp.Debounce(in, window, out)
+
+	return out
+}
+
+type Cancellable[T any] func(context.Context) (T, error)
+
+func Go[T any](ctx context.Context, fn Cancellable[T]) <-chan T {
+	var out = make(chan T)
+	var tmp = make(chan T)
+	go func() {
+		defer close(tmp)
+
+		r, err := fn(ctx)
+		if err == nil {
+			tmp <- r
+		}
+	}()
+
+	go func() {
+		defer close(out)
+		select {
+		case <-ctx.Done():
+			break
+		case r, ok := <-tmp:
+			if ok {
+				out <- r
+			}
+		}
+	}()
+
+	return out
+}
+
+func GoTimeout[T any](timeout time.Duration, fn Cancellable[T]) <-chan T {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	return Go(ctx, func(ctx context.Context) (T, error) {
+		defer cancel()
+		return fn(ctx)
+	})
+}
+
+func Race[T any](ctx context.Context, fns ...Cancellable[T]) <-chan T {
+	out := make(chan T)
+	for i := range fns {
+		go func(i int) {
+			r, err := fns[i](ctx)
+			if err == nil {
+				out <- r
+			}
+		}(i)
+	}
+
+	return out
+}
+
+func RaceTimeout[T any](timeout time.Duration, fns ...Cancellable[T]) <-chan T {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	out := make(chan T)
+	for i := range fns {
+		go func(i int) {
+			r, err := fns[i](ctx)
+			if err == nil {
+				out <- r
+				cancel()
+			}
+		}(i)
+	}
 
 	return out
 }
