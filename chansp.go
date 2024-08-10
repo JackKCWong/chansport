@@ -2,6 +2,7 @@ package chansport
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	csp "github.com/JackKCWong/chansport/internal"
@@ -87,14 +88,22 @@ func GoTimeout[T any](timeout time.Duration, fn Cancellable[T]) <-chan T {
 
 func Race[T any](ctx context.Context, fns ...Cancellable[T]) <-chan T {
 	out := make(chan T)
+	wg := &sync.WaitGroup{}
 	for i := range fns {
+		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
 			r, err := fns[i](ctx)
 			if err == nil {
 				out <- r
 			}
 		}(i)
 	}
+
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
 
 	return out
 }
@@ -103,8 +112,11 @@ func RaceTimeout[T any](timeout time.Duration, fns ...Cancellable[T]) <-chan T {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 
 	out := make(chan T)
+	wg := &sync.WaitGroup{}
 	for i := range fns {
+		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
 			r, err := fns[i](ctx)
 			if err == nil {
 				out <- r
@@ -112,6 +124,12 @@ func RaceTimeout[T any](timeout time.Duration, fns ...Cancellable[T]) <-chan T {
 			}
 		}(i)
 	}
+
+	go func() {
+		wg.Wait()
+		cancel()
+		close(out)
+	}()
 
 	return out
 }
