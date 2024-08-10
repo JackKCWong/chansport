@@ -99,3 +99,22 @@ func TestDebounce(t *testing.T) {
 		log.Println(i)
 	}
 }
+
+func TestGoPool(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	queue := sp.NewFIFO[int]()
+	queue.Start(3)
+	go func() {
+		for i := 0; i < 10; i++ {
+			i := i
+			queue.In <- func() int {
+				return i
+			}
+		}
+	}()
+
+	for i := 0; i < 10; i++ {
+		g.Expect(<-queue.Out).Should(Equal(i))
+	}
+}

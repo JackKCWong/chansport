@@ -24,6 +24,13 @@ func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	return out
 }
 
+func MapParallel[T any, R any](in <-chan T, fn func(v T) R, p int) <-chan R {
+	var out = make(chan R)
+	go csp.Map(in, out, fn)
+
+	return out
+}
+
 // FanOut starts n consuming goroutines that involves fn, and put the results back
 // to out. out will be closed if in is closed.
 func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
