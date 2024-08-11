@@ -24,14 +24,23 @@ func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	return out
 }
 
-func MapParallel[T any, R any](in <-chan T, fn func(v T) R, p int) <-chan R {
-	var out = make(chan R)
-	go csp.Map(in, out, fn)
+// MapParallel transforms T to R by fn in parallel. Parallelism is specified by n.
+func MapParallel[T any, R any](in <-chan T, fn func(v T) R, n int) <-chan R {
+	var fifo = csp.NewFIFO[R]()
+	fifo.Start(n)
+	go func() {
+		csp.Map(in, fifo.In, func(v T) func() R {
+			return func() R {
+				return fn(v)
+			}
+		})
+		close(fifo.In)
+	}()
 
-	return out
+	return fifo.Out
 }
 
-// FanOut starts n consuming goroutines that involves fn, and put the results back
+// FanOut starts n consuming goroutines that invokes fn, and put the results back
 // to out. out will be closed if in is closed.
 func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
 	var out = make(chan R)
@@ -49,6 +58,7 @@ func Reduce[T any, R any](in <-chan T, fn func(agg R, v T) R) R {
 	return agg
 }
 
+// Debounce debounces the input channel. i.e. only the last input from in within the time window will come out.
 func Debounce[T any](in <-chan T, window time.Duration) <-chan T {
 	var out = make(chan T)
 	go csp.Debounce(in, window, out)
@@ -58,6 +68,7 @@ func Debounce[T any](in <-chan T, window time.Duration) <-chan T {
 
 type Cancellable[T any] func(context.Context) (T, error)
 
+// Go invokes a blocking function fn in a new goroutine and put the result into a channel.
 func Go[T any](ctx context.Context, fn Cancellable[T]) <-chan T {
 	var out = make(chan T)
 	var tmp = make(chan T)
@@ -85,6 +96,7 @@ func Go[T any](ctx context.Context, fn Cancellable[T]) <-chan T {
 	return out
 }
 
+// GoTimeout invokes a blocking function fn in a new goroutine and put the result into a channel.
 func GoTimeout[T any](timeout time.Duration, fn Cancellable[T]) <-chan T {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	return Go(ctx, func(ctx context.Context) (T, error) {
@@ -93,6 +105,7 @@ func GoTimeout[T any](timeout time.Duration, fn Cancellable[T]) <-chan T {
 	})
 }
 
+// Race invokes all the functions in fns in parallel and returns the first result.
 func Race[T any](ctx context.Context, fns ...Cancellable[T]) <-chan T {
 	out := make(chan T)
 	wg := &sync.WaitGroup{}
@@ -115,6 +128,7 @@ func Race[T any](ctx context.Context, fns ...Cancellable[T]) <-chan T {
 	return out
 }
 
+// RaceTimeout invokes all the functions in fns in parallel and returns the first result.
 func RaceTimeout[T any](timeout time.Duration, fns ...Cancellable[T]) <-chan T {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 

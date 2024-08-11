@@ -104,17 +104,20 @@ func TestGoPool(t *testing.T) {
 	g := NewGomegaWithT(t)
 
 	queue := sp.NewFIFO[int]()
-	queue.Start(3)
+	queue.Start(10)
 	go func() {
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 1000; i++ {
 			i := i
 			queue.In <- func() int {
 				return i
 			}
 		}
+		close(queue.In)
 	}()
 
-	for i := 0; i < 10; i++ {
-		g.Expect(<-queue.Out).Should(Equal(i))
+	var expect int
+	for i := range queue.Out {
+		g.Expect(i).Should(Equal(expect))
+		expect++
 	}
 }

@@ -34,12 +34,6 @@ func Map[T any, R any](in <-chan T, out chan<- R, fn func(v T) R) {
 	}
 }
 
-func MapParallel[T any, R any](in <-chan T, out chan<- R, fn func(v T) R, p int) {
-	for v := range in {
-		out <- fn(v)
-	}
-}
-
 func FanOut[T any, R any](in <-chan T, out chan<- R, n int, fn func(v T) R) {
 	var wg sync.WaitGroup
 	wg.Add(n)
@@ -80,40 +74,43 @@ debounce:
 	}
 }
 
-type FIFO[T any] struct {
-	In  chan<- func() T
-	Out <-chan T
+type FIFO[R any] struct {
+	In  chan<- func() R
+	Out <-chan R
 
-	in           chan func() T
-	out          chan T
+	in           chan func() R
+	out          chan R
 	nextSeq      int
 	count        int
-	queue        chan task[T]
+	queue        chan task[R]
 	writeBarrier *sync.Cond
 }
 
-type task[T any] struct {
+type task[R any] struct {
 	seq int
-	fn  func() T
+	fn  func() R
 }
 
-func NewFIFO[T any]() *FIFO[T] {
-	in := make(chan func() T)
-	out := make(chan T)
-	return &FIFO[T]{
+func NewFIFO[R any]() *FIFO[R] {
+	in := make(chan func() R)
+	out := make(chan R)
+	return &FIFO[R]{
 		In:           in,
 		Out:          out,
 		in:           in,
 		out:          out,
-		queue:        make(chan task[T]),
+		queue:        make(chan task[R]),
 		writeBarrier: sync.NewCond(&sync.Mutex{}),
 		nextSeq:      1,
 	}
 }
 
 func (g *FIFO[T]) Start(parallel int) {
+	var wg sync.WaitGroup
+	wg.Add(parallel)
 	for i := 0; i < parallel; i++ {
 		go func() {
+			defer wg.Done()
 			for t := range g.queue {
 				r := t.fn()
 				g.writeBarrier.L.Lock()
@@ -128,11 +125,16 @@ func (g *FIFO[T]) Start(parallel int) {
 		}()
 	}
 
-	go Map(g.in, g.queue, func(fn func() T) task[T] {
-		g.count++
-		return task[T]{
-			seq: g.count,
-			fn:  fn,
-		}
-	})
+	go func() {
+		Map(g.in, g.queue, func(fn func() T) task[T] {
+			g.count++
+			return task[T]{
+				seq: g.count,
+				fn:  fn,
+			}
+		})
+		close(g.queue)
+		wg.Wait()
+		close(g.out)
+	}()
 }
