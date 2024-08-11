@@ -1,3 +1,4 @@
+// chansport provides common patterns like Map, Batching, FanOut using channels.
 package chansport
 
 import (
