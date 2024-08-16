@@ -57,11 +57,11 @@ func TestFanOut(t *testing.T) {
 		return v * 2
 	})
 
-	res := Reduce(out, func(a, v int) int {
+	res := Reduce(out, 1, func(a, v int) int {
 		return a + v
 	})
 
-	g.Expect(res).Should(Equal(30))
+	g.Expect(res).Should(Equal(31))
 }
 
 func TestDebounce(t *testing.T) {

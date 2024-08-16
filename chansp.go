@@ -50,13 +50,22 @@ func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
 	return out
 }
 
-func Reduce[T any, R any](in <-chan T, fn func(agg R, v T) R) R {
-	var agg R
+func Reduce[T any, R any](in <-chan T, init R, fn func(agg R, v T) R) R {
+	var agg R = init
 	for v := range in {
 		agg = fn(agg, v)
 	}
 
 	return agg
+}
+
+func Collect[T any] (in <-chan T) []T {
+	var out []T
+	for v := range in {
+		out = append(out, v)
+	}
+
+	return out
 }
 
 // Debounce debounces the input channel. i.e. only the last input from in within the time window will come out.
