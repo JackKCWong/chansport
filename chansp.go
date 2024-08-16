@@ -41,6 +41,23 @@ func MapParallel[T any, R any](in <-chan T, fn func(v T) R, n int) <-chan R {
 	return fifo.Out
 }
 
+// MapFilter transforms T to R by fn and filters out the results that are not accepted by filter.
+func MapFilter[T any, R any](in <-chan T, mapper func(v T) R, filter func(v R) bool) <-chan R {
+	var out = make(chan R)
+
+	go func() {
+		defer close(out)
+		for v := range in {
+			r := mapper(v)
+			if(filter(r)) {
+				out <- r
+			}
+		}
+	}()
+
+	return out
+}
+
 // FanOut starts n consuming goroutines that invokes fn, and put the results back
 // to out. out will be closed if in is closed.
 func FanOut[T any, R any](in <-chan T, n int, fn func(v T) R) <-chan R {
@@ -59,7 +76,7 @@ func Reduce[T any, R any](in <-chan T, init R, fn func(agg R, v T) R) R {
 	return agg
 }
 
-func Collect[T any] (in <-chan T) []T {
+func Collect[T any](in <-chan T) []T {
 	var out []T
 	for v := range in {
 		out = append(out, v)
