@@ -20,7 +20,10 @@ func Batching[T any](in <-chan T, window time.Duration) <-chan []T {
 // Map transforms T to R by fn.
 func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	var out = make(chan R)
-	go csp.Map(in, out, fn)
+	go func() {
+		defer close(out)
+		csp.Map(in, out, fn)
+	}()
 
 	return out
 }
@@ -30,12 +33,12 @@ func MapParallel[T any, R any](in <-chan T, fn func(v T) R, n int) <-chan R {
 	var fifo = csp.NewFIFO[R]()
 	fifo.Start(n)
 	go func() {
+		defer close(fifo.In)
 		csp.Map(in, fifo.In, func(v T) func() R {
 			return func() R {
 				return fn(v)
 			}
 		})
-		close(fifo.In)
 	}()
 
 	return fifo.Out
@@ -49,7 +52,7 @@ func MapFilter[T any, R any](in <-chan T, mapper func(v T) R, filter func(v R) b
 		defer close(out)
 		for v := range in {
 			r := mapper(v)
-			if(filter(r)) {
+			if filter(r) {
 				out <- r
 			}
 		}
