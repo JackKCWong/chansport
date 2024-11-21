@@ -17,6 +17,19 @@ func Batching[T any](in <-chan T, window time.Duration) <-chan []T {
 	return out
 }
 
+// MapSlice maps a slice to a channel.
+func MapSlice[T any](in []T) <-chan T {
+	out := make(chan T)
+	go func() {
+		defer close(out)
+		for _, v := range in {
+			out <- v
+		}
+	}()
+
+	return out
+}
+
 // Map transforms T to R by fn.
 func Map[T any, R any](in <-chan T, fn func(v T) R) <-chan R {
 	var out = make(chan R)
